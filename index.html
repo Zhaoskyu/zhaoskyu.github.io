@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>🗣️ 越南语点读助手</title>
+
+  <!-- PWA 关键元标签 -->
+  <meta name="theme-color" content="#1a5fb4" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="越南语点读" />
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <link rel="manifest" href="manifest.json">
+
+  <style>
+    body {
+      font-family: "Microsoft YaHei", "PingFang SC", "Segoe UI", sans-serif;
+      background: linear-gradient(135deg, #f5f7fa 0%, #e4edf9 100%);
+      color: #333;
+      padding: 16px;
+      max-width: 950px;
+      margin: 0 auto;
+    }
+    h1 {
+      text-align: center;
+      color: #1a5fb4;
+      margin: 10px 0 15px;
+      font-size: 1.6em;
+    }
+    .controls {
+      display: flex;
+      justify-content: center;
+      gap: 16px;
+      margin: 12px 0 20px;
+      flex-wrap: wrap;
+    }
+    .control-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: white;
+      padding: 8px 14px;
+      border-radius: 20px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+      font-size: 0.95em;
+    }
+    label { font-weight: bold; color: #2c3e50; }
+    input[type="range"] {
+      width: 110px;
+    }
+    input[type="checkbox"] {
+      transform: scale(1.2);
+    }
+    h2 {
+      color: #c0392b;
+      border-left: 4px solid #e74c3c;
+      padding-left: 12px;
+      margin-top: 25px;
+      font-size: 1.3em;
+    }
+    .phrase {
+      background: white;
+      padding: 14px 18px;
+      margin: 8px 0;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      transition: all 0.2s ease;
+    }
+    .phrase:hover {
+      background-color: #f0f8ff;
+    }
+    .play-icon {
+      font-size: 1.3em;
+      color: #2980b9;
+      margin-right: 12px;
+      min-width: 26px;
+      text-align: center;
+    }
+    .content {
+      flex: 1;
+    }
+    .zh { font-weight: bold; color: #2c3e50; }
+    .vi { color: #27ae60; margin-left: 8px; font-style: italic; }
+    .pron { color: #7f8c8d; margin-left: 8px; font-size: 0.92em; }
+    footer {
+      text-align: center;
+      margin-top: 30px;
+      color: #7f8c8d;
+      font-size: 0.85em;
+      padding-bottom: 20px;
+    }
+    .playing {
+      background-color: #e3f2fd !important;
+      border-left: 4px solid #3498db;
+    }
+    /* 安装提示 */
+    #installPrompt {
+      position: fixed;
+      bottom: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #2ecc71;
+      color: white;
+      padding: 10px 20px;
+      border-radius: 30px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+      display: none;
+      z-index: 1000;
+      font-size: 0.95em;
+    }
+    #installBtn {
+      background: white;
+      color: #2ecc71;
+      border: none;
+      padding: 4px 10px;
+      border-radius: 15px;
+      font-weight: bold;
+      margin-left: 8px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+<h1>🗣️ 越南语点读助手</h1>
+
+<div class="controls">
+  <div class="control-group">
+    <label for="volume">🔈 音量：</label>
+    <input type="range" id="volume" min="0" max="1" step="0.01" value="1">
+    <span id="vol-value">100%</span>
+  </div>
+  <div class="control-group">
+    <input type="checkbox" id="loop-mode">
+    <label for="loop-mode">🔁 循环</label>
+  </div>
+</div>
+
+<div id="content"></div>
+
+<footer>
+  💡 点击句子发音 | 支持离线使用<br>
+  📲 iPhone/Android：点击「分享」→「添加到主屏幕」即可当 App 使用！
+</footer>
+
+<!-- 安装提示（仅对支持 PWA 的浏览器显示） -->
+<div id="installPrompt">
+  想随时学习？<button id="installBtn">添加到主屏幕</button>
+</div>
+
+<script>
+// ========== 你的所有章节数据（此处省略，见下文说明）==========
+ // 所有学习内容数据（含全部15章）
+  const sections = [
+    {
+      title: "一、打招呼 & 礼貌用语（必会）",
+      items: [
+        { zh: "你好", vi: "Xin chào", pron: "辛 兆" },
+        { zh: "你好吗？", vi: "Bạn khỏe không?", pron: "班 奎 空" },
+        { zh: "早上好", vi: "Chào buổi sáng", pron: "兆 补儿 桑" },
+        { zh: "下午好", vi: "Chào buổi chiều", pron: "兆 补儿 纠" },
+        { zh: "晚上好", vi: "Chào buổi tối", pron: "兆 补儿 多依" },
+        { zh: "再见", vi: "Tạm biệt", pron: "探 别" },
+        { zh: "谢谢", vi: "Cảm ơn", pron: "感 恩" },
+        { zh: "非常感谢", vi: "Cảm ơn nhiều", pron: "感 恩 纽" },
+        { zh: "不客气", vi: "Không có gì", pron: "空 勾 以" },
+        { zh: "对不起", vi: "Xin lỗi", pron: "辛 洛" },
+        { zh: "没关系", vi: "Không sao", pron: "空 骚" }
+      ]
+    },
+    {
+      title: "二、万能高频口语（天天用）",
+      items: [
+        { zh: "可以 / 行", vi: "Được", pron: "夺" },
+        { zh: "不可以", vi: "Không được", pron: "空 夺" },
+        { zh: "好了", vi: "Rồi", pron: "若依" },
+        { zh: "没问题", vi: "Không vấn đề", pron: "空 文 得" },
+        { zh: "等一下", vi: "Đợi một chút", pron: "得 莫 祝" },
+        { zh: "快一点", vi: "Nhanh lên", pron: "宁 列" },
+        { zh: "慢一点", vi: "Chậm lại", pron: "展 来" },
+        { zh: "我不懂", vi: "Tôi không hiểu", pron: "多依 空 黑欧" },
+        { zh: "再说一次", vi: "Nói lại một lần", pron: "诺依 来 莫 冷" },
+        { zh: "听不懂", vi: "Tôi nghe không hiểu", pron: "多依 听 空 黑欧" }
+      ]
+    },
+    {
+      title: "三、生活 / 吃饭常用",
+      items: [
+        { zh: "吃饭了吗", vi: "Ăn cơm chưa", pron: "安 贡 追" },
+        { zh: "吃饭", vi: "Ăn cơm", pron: "安 贡" },
+        { zh: "好吃", vi: "Ngon", pron: "恩" },
+        { zh: "不好吃", vi: "Không ngon", pron: "空 恩" },
+        { zh: "水", vi: "Nước", pron: "诺" },
+        { zh: "热水", vi: "Nước nóng", pron: "诺 农" },
+        { zh: "冷水", vi: "Nước lạnh", pron: "诺 冷" },
+        { zh: "多少钱", vi: "Bao nhiêu tiền", pron: "包 纽 天" },
+        { zh: "买这个", vi: "Mua cái này", pron: "木 丐 奈" }
+      ]
+    },
+    {
+      title: "四、工作 / 工厂日常",
+      items: [
+        { zh: "上班", vi: "Đi làm", pron: "低 兰" },
+        { zh: "下班", vi: "Tan ca", pron: "谈 咖" },
+        { zh: "休息", vi: "Nghỉ", pron: "你" },
+        { zh: "加班", vi: "Tăng ca", pron: "当 咖" },
+        { zh: "今天", vi: "Hôm nay", pron: "后姆 奈" },
+        { zh: "明天", vi: "Ngày mai", pron: "奈 麦" },
+        { zh: "昨天", vi: "Hôm qua", pron: "后姆 瓜" },
+        { zh: "有问题", vi: "Có vấn đề", pron: "勾 文 得" },
+        { zh: "没问题", vi: "Không vấn đề", pron: "空 文 得" }
+      ]
+    },
+    {
+      title: "五、数字 & 金额（0 到 1 千万）",
+      items: [
+        { zh: "0", vi: "không", pron: "空" },
+        { zh: "1", vi: "một", pron: "莫" },
+        { zh: "2", vi: "hai", pron: "嗨" },
+        { zh: "3", vi: "ba", pron: "拔" },
+        { zh: "4", vi: "bốn", pron: "波" },
+        { zh: "5", vi: "năm", pron: "南" },
+        { zh: "6", vi: "sáu", pron: "扫" },
+        { zh: "7", vi: "bảy", pron: "拜" },
+        { zh: "8", vi: "tám", pron: "旦" },
+        { zh: "9", vi: "chín", pron: "金" },
+        { zh: "10", vi: "mười", pron: "么依" },
+        { zh: "11", vi: "mười một", pron: "么依 莫" },
+        { zh: "20", vi: "hai mươi", pron: "嗨 母依" },
+        { zh: "21", vi: "hai mươi mốt", pron: "嗨 母依 莫（特）" },
+        { zh: "25", vi: "hai mươi lăm", pron: "嗨 母依 南（拉姆）" },
+        { zh: "30", vi: "ba mươi", pron: "拔 母依" },
+        { zh: "45", vi: "bốn mươi lăm", pron: "波 母依 南（拉姆）" },
+        { zh: "99", vi: "chín mươi chín", pron: "金 母依 金" },
+        { zh: "100", vi: "một trăm", pron: "莫 查姆" },
+        { zh: "1,000", vi: "một nghìn", pron: "莫 恩音（北）" },
+        { zh: "1,000", vi: "một ngàn", pron: "莫 恩昂（南）" },
+        { zh: "10,000", vi: "mười nghìn", pron: "么依 恩音" },
+        { zh: "100,000", vi: "một trăm nghìn", pron: "莫 查姆 恩音" },
+        { zh: "1,000,000", vi: "một triệu", pron: "莫 交" },
+        { zh: "2,000,000", vi: "hai triệu", pron: "嗨 交" },
+        { zh: "5,000,000", vi: "năm triệu", pron: "南 交" },
+        { zh: "10,000,000", vi: "mười triệu", pron: "么依 交" }
+      ]
+    },
+    {
+      title: "六、越南人最爱说（你一听就懂）",
+      items: [
+        { vi: "Dạ", pron: "达", zh: "— 是 / 好（礼貌）" },
+        { vi: "Rồi", pron: "若依", zh: "— 好了" },
+        { vi: "Từ từ", pron: "资 资", zh: "— 慢慢来" },
+        { vi: "Được rồi", pron: "夺 若依", zh: "— 可以了" },
+        { vi: "Không sao", pron: "空 骚", zh: "— 没事" }
+      ]
+    },
+    {
+      title: "七、救命三句话（强烈推荐背下来）",
+      items: [
+        { zh: "我听不懂越南语", vi: "Tôi không hiểu tiếng Việt", pron: "多依 空 黑欧 天 越" },
+        { zh: "请说慢一点", vi: "Nói chậm lại một chút", pron: "诺依 展 来 莫 祝" },
+        { zh: "可以再说一次吗", vi: "Nói lại một lần được không", pron: "诺依 来 莫 冷 夺 空" }
+      ]
+    },
+    {
+      title: "八、越南钱 & 购物实战 💰",
+      items: [
+        { zh: "越南盾", vi: "Đồng", pron: "东" },
+        { zh: "五千盾", vi: "Năm nghìn đồng", pron: "南 恩音 东" },
+        { zh: "一万盾", vi: "Mười nghìn đồng", pron: "么依 恩音 东" },
+        { zh: "五万盾", vi: "Năm mươi nghìn đồng", pron: "南 母依 恩音 东" },
+        { zh: "十万盾", vi: "Một trăm nghìn đồng", pron: "莫 查姆 恩音 东" },
+        { zh: "三十万盾", vi: "Ba trăm nghìn đồng", pron: "拔 查姆 恩音 东" },
+        { zh: "五十万盾", vi: "Năm trăm nghìn đồng", pron: "南 查姆 恩音 东" },
+        { zh: "一百万盾", vi: "Một triệu đồng", pron: "莫 交 东" },
+        { zh: "两百万盾", vi: "Hai triệu đồng", pron: "嗨 交 东" },
+        { zh: "五百万盾", vi: "Năm triệu đồng", pron: "南 交 东" },
+        { zh: "一千万盾", vi: "Mười triệu đồng", pron: "么依 交 东" },
+        { zh: "太贵了", vi: "Đắt quá", pron: "扎 夸" },
+        { zh: "便宜点吧", vi: "Bớt đi một chút", pron: "波斯 低 莫 祝" },
+        { zh: "只要三十万", vi: "Chỉ ba trăm nghìn thôi", pron: "只 拔 查姆 恩音 奈" },
+        { zh: "这个要两百五十万", vi: "Cái này hai triệu rưỡi", pron: "丐 奈 嗨 交 儒" },
+        { zh: "可以刷卡吗？", vi: "Trả bằng thẻ được không?", pron: "查 傻恩 特 得 空？" },
+        { zh: "我要付现金", vi: "Tôi trả tiền mặt", pron: "多依 查 天 麦" },
+        { zh: "能打折吗？", vi: "Có thể giảm giá không?", pron: "勾 体 詹 嘉 空？" },
+        { zh: "请给我发票", vi: "Làm ơn cho hóa đơn", pron: "蓝 恩 乔 化 顿" }
+      ]
+    },
+    {
+      title: "九、问路 & 交通 🗺️",
+      items: [
+        { zh: "请问去火车站怎么走？", vi: "Cho hỏi đi ga xe lửa thế nào?", pron: "乔 会 低 嘎 谢 劳 泰 闹？" },
+        { zh: "这里离市中心远吗？", vi: "Ở đây cách trung tâm xa không?", pron: "欧 奎 咖 重 心 沙 空？" },
+        { zh: "左转", vi: "Rẽ trái", pron: "热 歪" },
+        { zh: "右转", vi: "Rẽ phải", pron: "热 派" },
+        { zh: "直走", vi: "Đi thẳng", pron: "低 壮" },
+        { zh: "下一个路口", vi: "Ngã tư tiếp theo", pron: "雅 四 接 帖" },
+        { zh: "公交车站在哪里？", vi: "Trạm xe buýt ở đâu?", pron: "站 谢 布衣 欧 都？" },
+        { zh: "地铁站在哪？", vi: "Ga tàu điện ngầm ở đâu?", pron: "嘎 陶 电 恩姆 欧 都？" },
+        { zh: "附近有便利店吗？", vi: "Gần đây có cửa hàng tiện lợi không?", pron: "近 代 勾 窗 行 天 利 空？" }
+      ]
+    },
+    {
+      title: "十、打车 & 摩托车 🛺",
+      items: [
+        { zh: "叫一辆 Grab", vi: "Gọi một chiếc Grab", pron: "高 莫 将 格拉布" },
+        { zh: "去这个地方", vi: "Đi đến chỗ này", pron: "低 到 灶 奈" },
+        { zh: "多少钱到机场？", vi: "Đi sân bay bao nhiêu tiền?", pron: "低 桑 白 包 纽 天？" },
+        { zh: "可以用现金付吗？", vi: "Trả tiền mặt được không?", pron: "查 天 麦 得 空？" },
+        { zh: "请开空调", vi: "Bật điều hòa giúp tôi", pron: "巴 点 和 嘉 姆 多依" },
+        { zh: "请停在这里", vi: "Dừng ở đây giúp tôi", pron: "邓 欧 奎 嘉 姆 多依" },
+        { zh: "摩托车出租吗？", vi: "Có cho thuê xe máy không?", pron: "勾 乔 春 谢 梅 空？" },
+        { zh: "头盔在哪里？", vi: "Mũ bảo hiểm ở đâu?", pron: "母 保 咸 欧 都？" }
+      ]
+    },
+    {
+      title: "十一、酒店住宿 🏨",
+      items: [
+        { zh: "有空房吗？", vi: "Còn phòng trống không?", pron: "贡 讽 通 空？" },
+        { zh: "一晚多少钱？", vi: "Một đêm bao nhiêu tiền?", pron: "莫 登 包 纽 天？" },
+        { zh: "我要订一间房", vi: "Tôi muốn đặt một phòng", pron: "多依 穆盎 得 莫 讽" },
+        { zh: "有 Wi-Fi 吗？", vi: "Có Wi-Fi không?", pron: "勾 维-菲 空？" },
+        { zh: "早餐包含吗？", vi: "Ăn sáng có kèm theo không?", pron: "安 桑 勾 康 帖 空？" },
+        { zh: "退房时间是几点？", vi: "Giờ trả phòng là mấy giờ?", pron: "哟 查 讽 拉 梅 优？" },
+        { zh: "可以延迟退房吗？", vi: "Có thể trả phòng muộn được không?", pron: "勾 体 查 讽 满 得 空？" },
+        { zh: "房间有热水吗？", vi: "Phòng có nước nóng không?", pron: "讽 勾 诺 农 空？" }
+      ]
+    },
+    {
+      title: "十二、医院 & 看病 🏥",
+      items: [
+        { zh: "我生病了", vi: "Tôi bị bệnh", pron: "多依 比 并" },
+        { zh: "我发烧了", vi: "Tôi bị sốt", pron: "多依 比 搜" },
+        { zh: "我头痛", vi: "Tôi đau đầu", pron: "多依 到 都" },
+        { zh: "我肚子痛", vi: "Tôi đau bụng", pron: "多依 到 本" },
+        { zh: "最近的医院在哪？", vi: "Bệnh viện gần nhất ở đâu?", pron: "并 院 近 涅 欧 都？" },
+        { zh: "我需要看医生", vi: "Tôi cần gặp bác sĩ", pron: "多依 肯 遇 白 西" },
+        { zh: "我过敏", vi: "Tôi bị dị ứng", pron: "多依 比 依 用" },
+        { zh: "这是处方药吗？", vi: "Thuốc này có cần toa không?", pron: "脱 奈 勾 肯 透 空？" },
+        { zh: "请帮我叫救护车", vi: "Làm ơn gọi xe cấp cứu", pron: "蓝 恩 高 谢 咖 救" }
+      ]
+    },
+    // ===== 新增章节：十三、餐厅点餐 =====
+    {
+      title: "十三、餐厅点餐 & 饮食 🍜",
+      items: [
+        { zh: "有菜单吗？", vi: "Có thực đơn không?", pron: "勾 实 单 空？" },
+        { zh: "推荐什么菜？", vi: "Món gì ngon?", pron: "门 以 恩？" },
+        { zh: "我要这个", vi: "Tôi lấy món này", pron: "多依 莱 门 奈" },
+        { zh: "不要辣", vi: "Đừng cho cay", pron: "邓 乔 财" },
+        { zh: "不要香菜", vi: "Đừng cho rau mùi", pron: "邓 乔 柔 咪" },
+        { zh: "加一杯水", vi: "Thêm một ly nước", pron: "添 莫 利 诺" },
+        { zh: "可以打包吗？", vi: "Có thể gói mang về không?", pron: "勾 体 咂 芒 味 空？" },
+        { zh: "结账，谢谢", vi: "Tính tiền, cảm ơn", pron: "挺 天，感 恩" },
+        { zh: "可以分开付吗？", vi: "Có thể tính riêng không?", pron: "勾 体 挺 瑞恩 空？" },
+        { zh: "有素食吗？", vi: "Có đồ chay không?", pron: "勾 多 拆 空？" }
+      ]
+    },
+    // ===== 新增章节：十四、紧急求助 =====
+    {
+      title: "十四、紧急求助 & 安全 🆘",
+      items: [
+        { zh: "救命！", vi: "Cứu tôi với!", pron: "救 多依 为！" },
+        { zh: "请帮我报警！", vi: "Làm ơn gọi cảnh sát giúp tôi!", pron: "蓝 恩 高 景 萨 嘉 姆 多依！" },
+        { zh: "我的钱包丢了", vi: "Ví tiền của tôi bị mất rồi!", pron: "维 天 勾 多依 比 满 若依！" },
+        { zh: "我的护照丢了", vi: "Hộ chiếu của tôi bị mất rồi!", pron: "霍 朝 勾 多依 比 满 若依！" },
+        { zh: "我迷路了", vi: "Tôi bị lạc đường rồi", pron: "多依 比 拉 党 若依" },
+        { zh: "着火了！", vi: "Cháy rồi!", pron: "拆 若依！" },
+        { zh: "有人受伤了", vi: "Có người bị thương", pron: "勾 诺依 比 通" },
+        { zh: "请叫警察", vi: "Gọi cảnh sát giúp tôi", pron: "高 景 萨 嘉 姆 多依" },
+        { zh: "这里很危险", vi: "Ở đây rất nguy hiểm", pron: "欧 奎 热 女 险" }
+      ]
+    },
+    // ===== 新增章节：十五、银行换汇 =====
+    {
+      title: "十五、银行 & 换汇 💳",
+      items: [
+        { zh: "我想换钱", vi: "Tôi muốn đổi tiền", pron: "多依 穆盎 对 天" },
+        { zh: "美元兑越南盾汇率多少？", vi: "Tỷ giá đô la Mỹ sang đồng là bao nhiêu?", pron: "一 加 多 拉 美 桑 东 拉 包 纽？" },
+        { zh: "收手续费吗？", vi: "Có thu phí không?", pron: "勾 图 费 空？" },
+        { zh: "这里能用银联卡吗？", vi: "Ở đây có dùng được thẻ UnionPay không?", pron: "欧 奎 勾 用 得 特 优 尼 昂 派 空？" },
+        { zh: "最近的 ATM 在哪？", vi: "Máy ATM gần nhất ở đâu?", pron: "梅 A-T-M 近 涅 欧 都？" },
+        { zh: "每天取现限额多少？", vi: "Hạn mức rút tiền mỗi ngày là bao nhiêu?", pron: "汗 母 陆 天 每 日 拉 包 纽？" },
+        { zh: "可以换人民币吗？", vi: "Có thể đổi nhân dân tệ không?", pron: "勾 体 对 仁 民 帖 空？" },
+        { zh: "请给我收据", vi: "Làm ơn cho tôi biên lai", pron: "蓝 恩 乔 多依 边 莱" }
+      ]
+    }
+  ];
+
+
+// ========== 渲染逻辑（不变）==========
+let html = '';
+sections.forEach(section => {
+  html += `<h2>${section.title}</h2>`;
+  section.items.forEach(item => {
+    html += `
+      <div class="phrase" data-text="${item.vi}">
+        <span class="play-icon">🔊</span>
+        <div class="content">
+          <span class="zh">${item.zh || ''}</span>
+          <span class="vi">${item.vi}</span>
+          <span class="pron">（${item.pron}）</span>
+        </div>
+      </div>
+    `;
+  });
+});
+document.getElementById('content').innerHTML = html;
+
+// ========== 控件与播放逻辑（不变）==========
+const volumeSlider = document.getElementById('volume');
+const volValue = document.getElementById('vol-value');
+const loopCheckbox = document.getElementById('loop-mode');
+
+volumeSlider.addEventListener('input', () => {
+  const vol = parseFloat(volumeSlider.value);
+  volValue.textContent = Math.round(vol * 100) + '%';
+});
+
+document.addEventListener('click', (e) => {
+  if (e.target.closest('.phrase')) {
+    const item = e.target.closest('.phrase');
+    const text = item.getAttribute('data-text');
+    playText(text);
+    document.querySelectorAll('.phrase').forEach(p => p.classList.remove('playing'));
+    item.classList.add('playing');
+  }
+});
+
+function playText(text) {
+  window.speechSynthesis.cancel();
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.lang = 'vi-VN';
+  utterance.volume = parseFloat(volumeSlider.value);
+  utterance.rate = 1.0;
+  utterance.pitch = 1.0;
+
+  if (loopCheckbox.checked) {
+    utterance.onend = () => {
+      setTimeout(() => playText(text), 300);
+    };
+  }
+
+  speechSynthesis.speak(utterance);
+}
+
+window.addEventListener('beforeunload', () => {
+  window.speechSynthesis.cancel();
+});
+
+// ========== PWA 安装提示逻辑 ==========
+let deferredPrompt;
+const installPrompt = document.getElementById('installPrompt');
+const installBtn = document.getElementById('installBtn');
+
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+  installPrompt.style.display = 'flex';
+});
+
+installBtn.addEventListener('click', () => {
+  if (deferredPrompt) {
+    deferredPrompt.prompt();
+    deferredPrompt.userChoice.then((choiceResult) => {
+      if (choiceResult.outcome === 'accepted') {
+        console.log('用户已安装 PWA');
+      }
+      installPrompt.style.display = 'none';
+      deferredPrompt = null;
+    });
+  }
+});
+</script>
+
+<!-- 注册 Service Worker（实现离线缓存） -->
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js')
+      .then(reg => console.log('SW registered:', reg))
+      .catch(err => console.log('SW failed:', err));
+  });
+}
+</script>
+
+</body>
+</html>
